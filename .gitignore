@@ -1,0 +1,36 @@
+# Environment variables
+.env
+
+# Virtual environments
+IVenv/
+ILVenv/
+venv/
+.venv/
+env/
+ENV/
+
+# Python cache and temporary files
+__pycache__/
+*.py[cod]
+*$py.class
+*.pyd
+*.pyo
+.pytest_cache/
+.tox/
+.nox/
+.coverage
+*.db
+*.log
+
+# Jupyter Notebooks
+.ipynb_checkpoints
+
+# IDEs and Editors
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# System files
+.DS_Store
+Thumbs.db
