@@ -71,6 +71,25 @@ class MinioClient:
         )
         #print(f"[MinIO] Upload de arquivo concluído: s3://{bucket_name}/{object_name}")
 
+
+    def get_object(self, bucket_name: str, object_name: str) -> io.BytesIO:
+        """
+        Faz o download de um objeto do MinIO e retorna como BytesIO em memória.
+        Ideal para baixar arquivos Parquet e passar direto pro DuckDB sem 
+        salvar em disco.
+        
+        - bucket_name: Nome do bucket (ex: 'terceirizados')
+        - object_name: Caminho completo do objeto (ex: 'raw/terceirizados_2025-01.parquet')
+        """
+        try:
+            response = self.client.get_object(bucket_name, object_name)
+            buffer = io.BytesIO(response.read())
+            buffer.seek(0)
+            return buffer
+        finally:
+            response.close()
+            response.release_conn()
+
     def list_objects(self, bucket_name: str, prefix: str = "") -> list[str]:
         """
         Lista todos os objetos dentro de um bucket com um determinado prefixo.
