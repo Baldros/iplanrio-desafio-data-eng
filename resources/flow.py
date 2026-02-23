@@ -1,11 +1,20 @@
-# Dependências
+"""
+Módulo responsável pelo organização e orquestração do 
+workflow de ingestão de dados e ETL no padrão da 
+arquitetura Medallion.
+"""
+
+
+# Modulos do projeto
+from scraping import ScrapingClient
+from OStorage import MinioClient
+
+# Dependências auxiliares
 import os 
 import io
-from dotenv import load_dotenv
-from scraping import ScrapingClient
-from storage import MinioClient
 from tqdm import tqdm
 from time import time
+from dotenv import load_dotenv
 
 # Carregar variáveis do .env
 load_dotenv()

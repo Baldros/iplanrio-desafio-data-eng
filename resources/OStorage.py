@@ -1,3 +1,10 @@
+"""
+Módulo responsável por criar o cliente com o Objective Storage. Aqui
+estruturamos toda a comunicação com o MinIO, tanto leitura, quanto
+escrita.
+"""
+
+
 import os
 import io
 from minio import Minio

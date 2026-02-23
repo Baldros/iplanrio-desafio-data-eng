@@ -1,3 +1,10 @@
+"""
+Módulo responsável pela aquisição de dados. Aqui estruturamos
+toda a estratégia de scraping para extrair os dados da página
+fornecida pelo desafio.
+"""
+
+
 # Dependências
 import re
 import io
