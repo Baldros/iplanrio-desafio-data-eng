@@ -6,7 +6,7 @@ arquitetura Medallion.
 
 
 # Modulos do projeto
-from scraping import ScrapingClient
+from scraper import ScrapingClient
 from OStorage import MinioClient
 
 # Dependências auxiliares
