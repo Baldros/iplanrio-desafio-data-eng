@@ -7,7 +7,7 @@ arquitetura Medallion.
 
 # Modulos do projeto
 from scraper import ScrapingClient
-from OStorage import MinioClient
+from OStorage import OBJStorageClient
 from RStorage import DuckDBClient
 
 # Dependências auxiliares
@@ -29,7 +29,7 @@ def main():
     prefix = "raw/"
     
     scrape = ScrapingClient(url)
-    minio = MinioClient()
+    minio = OBJStorageClient()
     duck_client = DuckDBClient()
     
     # Garante que o bucket exista

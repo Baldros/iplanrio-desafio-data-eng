@@ -28,11 +28,12 @@ class DuckDBClient:
         self.silver_path = os.path.join(self.tmp_dir, "terceirizados-silver.duckdb")
         self.gold_path   = os.path.join(self.tmp_dir, "terceirizados-gold.duckdb")
         
-        # Credenciais MinIO
-        endpoint = os.getenv("MINIO_ENDPOINT", "localhost:9000")
+        # Credenciais MinIO/S3
+        endpoint = os.getenv("S3_ENDPOINT_URL", "localhost:9000")
         self.s3_endpoint   = endpoint.replace("http://", "").replace("https://", "")
-        self.s3_access_key = os.getenv("MINIO_ROOT_USER", "")
-        self.s3_secret_key = os.getenv("MINIO_ROOT_PASSWORD", "")
+        self.s3_access_key = os.getenv("AWS_ACCESS_KEY_ID", "")
+        self.s3_secret_key = os.getenv("AWS_SECRET_ACCESS_KEY", "")
+        self.s3_region     = os.getenv("AWS_REGION", "us-east-1")
 
     def create_bronze(self, bucket_name: str, prefix: str = "raw/", table_name: str = "terceirizados") -> str:
         """
@@ -59,6 +60,7 @@ class DuckDBClient:
             conn.execute(f"SET s3_endpoint='{self.s3_endpoint}';")
             conn.execute(f"SET s3_access_key_id='{self.s3_access_key}';")
             conn.execute(f"SET s3_secret_access_key='{self.s3_secret_key}';")
+            conn.execute(f"SET s3_region='{self.s3_region}';")
             
             # Configurações essenciais para MinIO (usar HTTP no dev e path style)
             conn.execute("SET s3_use_ssl=false;")
