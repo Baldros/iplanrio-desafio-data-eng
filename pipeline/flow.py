@@ -9,6 +9,7 @@ arquitetura Medallion.
 from scraper import ScrapingClient
 from OStorage import OBJStorageClient
 from RStorage import DuckDBClient
+from dbt_runner import DbtRunner
 
 # Dependências auxiliares
 import os 
@@ -31,6 +32,7 @@ def main():
     scrape = ScrapingClient(url)
     minio = OBJStorageClient()
     duck_client = DuckDBClient()
+    dbt = DbtRunner()
     
     # Garante que o bucket exista
     minio.ensure_bucket_exists(bucket_name)
@@ -92,46 +94,63 @@ def main():
         # 5.2 O MinIO Client pega esse arquivo e posta na pasta da bronze
         object_name_bronze = "bronze/terceirizados-bronze.duckdb"
         minio.upload_file(bucket_name, object_name_bronze, file_path)
-        os.remove(file_path) # Limpeza local
         print("\n[Flow] Camada Bronze atualizada com sucesso no MinIO!")
         
     # 6. Criar a Camada Silver
-    # (O dbt requer o arquivo bronze físico pra ler, então baixamos se necessário ou 
-    # usamos o que acabou de ser gerado).
     print("\n=== Iniciando Camada SILVER ===")
     
-    # 6.1 Preparar diretório local temporário
     tmp_path = os.path.join(os.getcwd(), "tmp")
     os.makedirs(tmp_path, exist_ok=True)
     
     local_bronze = os.path.join(tmp_path, "terceirizados-bronze.duckdb")
+    local_silver = os.path.join(tmp_path, "terceirizados-silver.duckdb")
+    local_gold   = os.path.join(tmp_path, "terceirizados-gold.duckdb")
+
     object_name_bronze = "bronze/terceirizados-bronze.duckdb"
     object_name_silver = "silver/terceirizados-silver.duckdb"
+    object_name_gold   = "gold/terceirizados-gold.duckdb"
 
-    # 6.2 Garantir que temos o bronze localmente para o dbt
+    # 6.1 Garantir que temos o bronze localmente para o dbt
     if not os.path.exists(local_bronze):
         print(f"[Flow] Baixando a base Bronze do MinIO para processamento dbt...")
         minio.download_file(bucket_name, object_name_bronze, local_bronze)
     
-    # 6.3 Executar o dbt via RStorage
+    # 6.2 Executar o dbt via DbtRunner (Silver)
     try:
-        local_silver = duck_client.create_silver(tmp_path)
+        dbt.run_silver()
         
-        # 6.4 Upload da Silver resultante
         if os.path.exists(local_silver):
             print(f"[Flow] Enviando Camada Silver para o MinIO...")
             minio.upload_file(bucket_name, object_name_silver, local_silver)
             print("[Flow] Camada Silver atualizada com sucesso no MinIO!")
             
-            # Limpeza local
-            os.remove(local_silver)
-        
-        # Se baixamos o bronze ou ele ficou aqui, limpamos no final
-        if os.path.exists(local_bronze):
-            os.remove(local_bronze)
-            
     except Exception as e:
         print(f"[Flow] Erro durante a criação da camada Silver: {e}")
+
+    # 7. Criar a Camada Gold
+    print("\n=== Iniciando Camada GOLD ===")
+    try:
+        # 7.1 Garantir que temos o silver localmente (caso tenha falhado o passo anterior ou queiramos rodar gold isolado)
+        if not os.path.exists(local_silver):
+             print(f"[Flow] Baixando a base Silver do MinIO para processamento dbt Gold...")
+             minio.download_file(bucket_name, object_name_silver, local_silver)
+
+        # 7.2 Executar o dbt via DbtRunner (Gold)
+        dbt.run_gold()
+
+        if os.path.exists(local_gold):
+            print(f"[Flow] Enviando Camada Gold para o MinIO...")
+            minio.upload_file(bucket_name, object_name_gold, local_gold)
+            print("[Flow] Camada Gold atualizada com sucesso no MinIO!")
+
+    except Exception as e:
+        print(f"[Flow] Erro durante a criação da camada Gold: {e}")
+
+    # 8. Limpeza Geral
+    print("\n[Flow] Finalizando e limpando arquivos temporários...")
+    for f in [local_bronze, local_silver, local_gold]:
+        if os.path.exists(f):
+            os.remove(f)
 
     if baixados == 0:
         print("\n[Flow] Banco de dados RAW 100% atualizado. Nenhuma novidade encontrada.")

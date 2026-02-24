@@ -7,8 +7,6 @@ model-paths: ["models"]
 
 models:
   terceirizados:
-    bronze:
-      materialized: table
     silver:
       materialized: table
     gold:

@@ -1,0 +1,33 @@
+version: 2
+
+models:
+  - name: terceirizados_silver
+    description: "Dados de terceirizados federais limpos e padronizados conforme o manual de estilo da IPLANRIO."
+    columns:
+      - name: id_terceirizado
+        description: "Identificador único do terceirizado."
+        tests:
+          - not_null
+      - name: cpf
+        description: "CPF do terceirizado."
+        tests:
+          - not_null
+      - name: cnpj
+        description: "CNPJ da empresa contratada."
+        tests:
+          - not_null
+
+  - name: terceirizados_gold
+    description: "Modelo final para consumo pela API REST."
+    columns:
+      - name: id_terceirizado
+        description: "ID do terceirizado para identificação nos endpoints."
+        tests:
+          - not_null
+          - unique
+      - name: orgao_superior_sigla
+        description: "Sigla do órgão superior da unidade gestora."
+      - name: cnpj
+        description: "CNPJ da empresa terceirizada."
+      - name: cpf
+        description: "CPF do terceirizado."

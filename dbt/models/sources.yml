@@ -1,0 +1,14 @@
+version: 2
+
+sources:
+  - name: bronze
+    database: bronze
+    schema: main
+    tables:
+      - name: terceirizados
+
+  - name: silver
+    database: silver
+    schema: main
+    tables:
+      - name: terceirizados_silver

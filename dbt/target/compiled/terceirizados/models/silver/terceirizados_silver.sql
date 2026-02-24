@@ -38,5 +38,5 @@ SELECT
         1
     )                                                                           AS mes_referencia_data
 
-FROM {{ source('bronze', 'terceirizados') }}
+FROM "bronze"."main"."terceirizados"
 WHERE nr_cpf IS NOT NULL

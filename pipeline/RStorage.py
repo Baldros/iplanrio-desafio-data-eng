@@ -6,7 +6,6 @@ SGBD Relacional.
 
 import os
 import duckdb
-import subprocess
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -78,35 +77,3 @@ class DuckDBClient:
 
         # Retorna o path físico elegante para ser usado pelo upload_file
         return self.bronze_path
-
-    def create_silver(self, db_dir: str) -> str:
-        """
-        Gera a camada Silver orquestrando o dbt (Data Build Tool).
-        O dbt transformará a origin-table (bronze.duckdb) no modelo target (silver.duckdb).
-        - db_dir: Caminho absoluto do diretório contendo o arquivo bronze.duckdb baixado
-        """
-        print(f"[DuckDB/dbt] Iniciando processo de transformação dbt Silver...")
-        
-        # Assumindo que o diretório tmp está na raiz do projeto e o dbt no subdiretório dbt/
-        # Retrocedemos uma pasta a partir de db_dir (/tmp) para chegar na raiz
-        project_root = os.path.dirname(db_dir)
-        dbt_project_dir = os.path.join(project_root, "dbt")
-        
-        try:
-            # Executa o comando dbt de forma limpa, já que o profiles.yml usa paths relativos
-            result = subprocess.run(
-                ["dbt", "run", "--select", "silver", "--target", "silver"],
-                cwd=dbt_project_dir,
-                check=True,
-                capture_output=True,
-                text=True
-            )
-            print("[DuckDB/dbt] Transformação dbt concluída com sucesso!")
-            print(result.stdout)
-            
-        except subprocess.CalledProcessError as e:
-            print(f"[DuckDB/dbt] Falha durante a compilação do dbt:\n{e.stderr}")
-            raise e
-
-        # Retorna o path do resultado
-        return os.path.join(db_dir, "terceirizados-silver.duckdb")

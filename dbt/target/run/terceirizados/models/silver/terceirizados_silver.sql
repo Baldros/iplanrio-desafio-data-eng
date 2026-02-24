@@ -1,4 +1,13 @@
--- models/silver/terceirizados_silver.sql
+
+  
+    
+    
+
+    create  table
+      "terceirizados-silver"."main"."terceirizados_silver__dbt_tmp"
+  
+    as (
+      -- models/silver/terceirizados_silver.sql
 SELECT
     -- Chave primária primeiro
     TRY_CAST(id_terc AS INTEGER)                                                AS id_terceirizado,
@@ -38,5 +47,8 @@ SELECT
         1
     )                                                                           AS mes_referencia_data
 
-FROM {{ source('bronze', 'terceirizados') }}
+FROM "bronze"."main"."terceirizados"
 WHERE nr_cpf IS NOT NULL
+    );
+  
+  

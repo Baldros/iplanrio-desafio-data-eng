@@ -1,12 +1,17 @@
 terceirizados:
   target: silver
   outputs:
-    bronze:
-      type: duckdb
-      path: "../tmp/terceirizados-bronze.duckdb"
     silver:
       type: duckdb
       path: "../tmp/terceirizados-silver.duckdb"
+      attach:
+        - path: "../tmp/terceirizados-bronze.duckdb"
+          alias: bronze
     gold:
       type: duckdb
       path: "../tmp/terceirizados-gold.duckdb"
+      attach:
+        - path: "../tmp/terceirizados-silver.duckdb"
+          alias: silver
+        - path: "../tmp/terceirizados-bronze.duckdb"
+          alias: bronze
