@@ -78,6 +78,18 @@ class MinioClient:
         )
         #print(f"[MinIO] Upload de arquivo concluído: s3://{bucket_name}/{object_name}")
 
+    def download_file(self, bucket_name: str, object_name: str, file_path: str) -> str:
+        """
+        Baixa um objeto armazenado no MinIO diretamente para o disco local.
+        Retorna o caminho do arquivo baixado (file_path).
+        """
+        self.client.fget_object(
+            bucket_name=bucket_name,
+            object_name=object_name,
+            file_path=file_path
+        )
+        return file_path
+
 
     def get_object(self, bucket_name: str, object_name: str) -> io.BytesIO:
         """

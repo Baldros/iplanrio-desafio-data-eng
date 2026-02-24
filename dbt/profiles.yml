@@ -3,10 +3,10 @@ terceirizados:
   outputs:
     bronze:
       type: duckdb
-      path: "{{ env_var('PROJECT_ROOT') }}/tmp/terceirizados-bronze.duckdb"
+      path: "../tmp/terceirizados-bronze.duckdb"
     silver:
       type: duckdb
-      path: "{{ env_var('PROJECT_ROOT') }}/tmp/terceirizados-silver.duckdb"
+      path: "../tmp/terceirizados-silver.duckdb"
     gold:
       type: duckdb
-      path: "{{ env_var('PROJECT_ROOT') }}/tmp/terceirizados-gold.duckdb"
+      path: "../tmp/terceirizados-gold.duckdb"
