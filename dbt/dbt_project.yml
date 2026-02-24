@@ -1,0 +1,15 @@
+name: 'terceirizados'
+version: '1.0.0'
+
+profile: 'terceirizados'
+
+model-paths: ["models"]
+
+models:
+  terceirizados:
+    bronze:
+      materialized: table
+    silver:
+      materialized: table
+    gold:
+      materialized: table

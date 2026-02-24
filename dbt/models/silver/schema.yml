@@ -1,0 +1,53 @@
+version: 2
+
+models:
+  - name: terceirizados_silver
+    description: "Dados de terceirizados federais limpos e padronizados conforme o manual de estilo da IPLANRIO"
+    columns:
+      - name: id_terceirizado
+        description: "Identificador único do registro do terceirizado na base da CGU"
+        tests:
+          - not_null
+
+      - name: cpf
+        description: "CPF do terceirizado"
+        tests:
+          - not_null
+
+      - name: cnpj
+        description: "CNPJ da empresa terceirizada"
+        tests:
+          - not_null
+
+      - name: terceirizado_nome
+        description: "Nome completo do terceirizado"
+        tests:
+          - not_null
+
+      - name: orgao_superior_sigla
+        description: "Sigla do órgão superior da unidade gestora do terceirizado"
+
+      - name: orgao_sigla
+        description: "Sigla do órgão onde o terceirizado trabalha"
+
+      - name: orgao_nome
+        description: "Nome do órgão onde o terceirizado trabalha"
+
+      - name: salario_mensal_valor
+        description: "Valor mensal do salário do terceirizado em reais"
+
+      - name: custo_mensal_valor
+        description: "Custo total mensal do terceirizado em reais"
+
+      - name: jornada_quantidade
+        description: "Quantidade de horas semanais de trabalho"
+
+      - name: ano_carga
+        description: "Ano de referência da carga dos dados"
+        tests:
+          - not_null
+
+      - name: mes_carga_numero
+        description: "Número do mês de referência da carga dos dados"
+        tests:
+          - not_null
