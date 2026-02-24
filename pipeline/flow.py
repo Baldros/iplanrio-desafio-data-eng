@@ -92,7 +92,7 @@ def main():
         # 5.2 O MinIO Client pega esse arquivo e posta na pasta da bronze
         object_name_bronze = "bronze/terceirizados-bronze.duckdb"
         minio.upload_file(bucket_name, object_name_bronze, file_path)
-        
+        os.remove(file_path) # Limpeza local
         print("\n[Flow] Camada Bronze atualizada com sucesso no MinIO!")
         
     if baixados == 0:

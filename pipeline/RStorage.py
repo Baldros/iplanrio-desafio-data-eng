@@ -48,14 +48,14 @@ class DuckDBClient:
         Retorna o caminho (path) absoluto do arquivo gerado para upload.
         """
         # Garante que o diretório exista se usarmos um path com subdiretórios
-        db_dir = os.path.dirname(self.db_path)
+        db_dir = os.path.dirname(self.bronze_path)
         if db_dir:
             os.makedirs(db_dir, exist_ok=True)
             
-        print(f"[DuckDB] Consolidando arquivos do s3://{bucket_name}/{prefix}*.parquet no banco {self.db_path}...")
+        print(f"[DuckDB] Consolidando arquivos do s3://{bucket_name}/{prefix}*.parquet no banco {self.bronze_path}...")
             
         # Conecta ao arquivo físico (se não existir, ele cria)
-        conn = duckdb.connect(self.db_path)
+        conn = duckdb.connect(self.bronze_path)
         
         try:
             # Instala e carrega extensão para ler do S3/MinIO
@@ -74,7 +74,7 @@ class DuckDBClient:
             # Cria a tabela consolidando TODOS os parquets usando glob pattern (*)
             query = f"""CREATE OR REPLACE TABLE {table_name} AS SELECT * FROM read_parquet('s3://{bucket_name}/{prefix}*.parquet', union_by_name=true)"""
             conn.execute(query)
-            print(f"[DuckDB] Banco consolidado com sucesso em: {self.db_path}")
+            print(f"[DuckDB] Banco consolidado com sucesso em: {self.bronze_path}")
             
         finally:
             # É crítico fechar a conexão para que todos os bytes sejam descarregados do WAL (Write-Ahead Log)
@@ -82,4 +82,4 @@ class DuckDBClient:
             conn.close()
 
         # Retorna o path físico elegante para ser usado pelo upload_file
-        return self.db_path
+        return self.bronze_path
