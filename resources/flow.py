@@ -8,6 +8,7 @@ arquitetura Medallion.
 # Modulos do projeto
 from scraper import ScrapingClient
 from OStorage import MinioClient
+from RStorage import DuckDBClient
 
 # Dependências auxiliares
 import os 
@@ -29,6 +30,7 @@ def main():
     
     scrape = ScrapingClient(url)
     minio = MinioClient()
+    duck_client = DuckDBClient()
     
     # Garante que o bucket exista
     minio.ensure_bucket_exists(bucket_name)
@@ -79,7 +81,20 @@ def main():
                 
             except Exception as e:
                 print(f"[Flow] Erro ao processar {ano}-{mes}: {e}")
-
+        
+    # 5. Criar a Camada Bronze (Apenas se houve novidades)
+    if baixados > 0:
+        print("\n=== Iniciando Camada BRONZE ===")
+        
+        # 5.1 O DuckDBClient conecta ao s3, lê todos os parquets raw, e gera o arquivo físico local consolidado
+        file_path = duck_client.create_bronze(bucket_name=bucket_name, prefix=prefix)
+        
+        # 5.2 O MinIO Client pega esse arquivo e posta na pasta da bronze
+        object_name_bronze = "bronze/terceirizados-bronze.duckdb"
+        minio.upload_file(bucket_name, object_name_bronze, file_path)
+        
+        print("\n[Flow] Camada Bronze atualizada com sucesso no MinIO!")
+        
     if baixados == 0:
         print("\n[Flow] Banco de dados RAW 100% atualizado. Nenhuma novidade encontrada.")
     else:
@@ -90,4 +105,3 @@ if __name__ == "__main__":
     main()
     end = time()
     print(f"\n[Flow] Tempo total de execução: {end - start} segundos.")
-
