@@ -4,6 +4,7 @@
 # Virtual environments
 IVenv/
 ILVenv/
+Consulta/
 
 
 # Python cache and temporary files
