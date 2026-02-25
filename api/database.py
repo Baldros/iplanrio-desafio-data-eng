@@ -47,15 +47,10 @@ class DatabaseManager:
             try:
                 # Agora o ATTACH usa automaticamente o secret 's3_creds'
                 self._conn.execute(f"ATTACH '{s3_path}' AS gold_db (READ_ONLY);")
-                print(f"Suceso: Cloud Mount estabelecido em {s3_path}")
+                print(f"Sucesso: Cloud Mount estabelecido em {s3_path}")
             except Exception as e:
-                # Fallback técnico: Se o ATTACH do arquivo .duckdb via S3 falhar (limitação de alguns providers/versões)
-                # O ideal em uma arquitetura Data Lakehouse seria ler Parquet, 
-                # mas vamos tentar garantir que o erro seja claro.
                 raise RuntimeError(f"Erro ao montar banco Ouro via S3 Secrets: {e}")
                 
-        return self._conn
-            
         return self._conn
 
 # Singleton instance

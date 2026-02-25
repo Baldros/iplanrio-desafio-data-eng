@@ -2,32 +2,132 @@ version: 2
 
 models:
   - name: terceirizados_silver
-    description: "Dados de terceirizados federais limpos e padronizados conforme o manual de estilo da IPLANRIO."
+    description: "Dados de terceirizados federais limpos e padronizados conforme o manual de estilo da IPLANRIO. Modelo incremental — agrega novos meses de referência sem reprocessar histórico."
     columns:
       - name: id_terceirizado
-        description: "Identificador único do terceirizado."
+        description: "Identificador único do registro do terceirizado na base de dados da CGU."
         tests:
           - not_null
       - name: cpf
-        description: "CPF do terceirizado."
+        description: "CPF do terceirizado (pessoa física)."
         tests:
           - not_null
+      - name: terceirizado_nome
+        description: "Nome completo do terceirizado."
+      - name: categoria_profissional_nome
+        description: "Código CBO e descrição da categoria profissional do terceirizado."
+      - name: escolaridade_nome
+        description: "Nível de escolaridade exigido pela ocupação do terceirizado."
+      - name: jornada_quantidade
+        description: "Quantidade de horas semanais de trabalho do terceirizado."
+      - name: salario_mensal_valor
+        description: "Valor mensal do salário do terceirizado em reais (R$)."
+        tests:
+          - dbt_utils.accepted_range:
+              min_value: 0
+              config:
+                severity: warn
+      - name: custo_mensal_valor
+        description: "Custo total mensal do terceirizado em reais (R$)."
+        tests:
+          - dbt_utils.accepted_range:
+              min_value: 0
+              config:
+                severity: warn
       - name: cnpj
-        description: "CNPJ da empresa contratada."
+        description: "CNPJ da empresa terceirizada contratada."
+        tests:
+          - not_null
+      - name: empresa_razao_social_nome
+        description: "Razão Social da empresa terceirizada."
+      - name: contrato_numero
+        description: "Número do contrato firmado com a empresa terceirizada."
+      - name: orgao_superior_sigla
+        description: "Sigla do órgão superior da unidade gestora do terceirizado."
+      - name: orgao_sigla
+        description: "Sigla do órgão onde o terceirizado trabalha."
+      - name: orgao_nome
+        description: "Nome do órgão onde o terceirizado trabalha."
+      - name: orgao_codigo_siafi
+        description: "Código SIAFI (Sistema Integrado de Administração Financeira) do órgão."
+      - name: orgao_codigo_siape
+        description: "Código SIAPE (Sistema de Administração de Pessoal) do órgão."
+      - name: unidade_gestora_codigo
+        description: "Código da unidade gestora (SIAFI) do terceirizado."
+      - name: unidade_gestora_nome
+        description: "Nome da unidade gestora do terceirizado."
+      - name: unidade_gestora_sigla
+        description: "Sigla da unidade gestora do terceirizado."
+      - name: unidade_prestacao_nome
+        description: "Descrição da unidade onde o terceirizado efetivamente trabalha."
+      - name: mes_carga_numero
+        description: "Número do mês da carga de dados (1=Janeiro, 5=Maio, 9=Setembro)."
+        tests:
+          - accepted_values:
+              values: [1, 5, 9]
+              config:
+                severity: warn
+      - name: mes_carga_nome
+        description: "Nome do mês da carga de dados (Janeiro, Maio, Setembro)."
+      - name: ano_carga
+        description: "Ano da carga dos dados."
+      - name: mes_referencia_data
+        description: "Data de referência (primeiro dia do mês de carga), usada como chave de incrementalidade."
         tests:
           - not_null
 
   - name: terceirizados_gold
-    description: "Modelo final para consumo pela API REST."
+    description: "Modelo final para consumo pela API REST. Contém todos os dados da camada Silver, pronto para os endpoints /terceirizados e /terceirizados/{id}."
     columns:
       - name: id_terceirizado
-        description: "ID do terceirizado para identificação nos endpoints."
+        description: "ID do terceirizado para identificação nos endpoints da API."
         tests:
           - not_null
-          - unique
       - name: orgao_superior_sigla
-        description: "Sigla do órgão superior da unidade gestora."
+        description: "Sigla do órgão superior da unidade gestora — retornado no endpoint de listagem."
       - name: cnpj
-        description: "CNPJ da empresa terceirizada."
+        description: "CNPJ da empresa terceirizada — retornado no endpoint de listagem."
       - name: cpf
-        description: "CPF do terceirizado."
+        description: "CPF do terceirizado — retornado no endpoint de listagem."
+      - name: terceirizado_nome
+        description: "Nome completo do terceirizado."
+      - name: categoria_profissional_nome
+        description: "Código CBO e descrição da categoria profissional."
+      - name: escolaridade_nome
+        description: "Nível de escolaridade exigido pela ocupação."
+      - name: jornada_quantidade
+        description: "Quantidade de horas semanais de trabalho."
+      - name: salario_mensal_valor
+        description: "Valor mensal do salário em reais (R$)."
+      - name: custo_mensal_valor
+        description: "Custo total mensal em reais (R$)."
+      - name: empresa_razao_social_nome
+        description: "Razão Social da empresa terceirizada."
+      - name: contrato_numero
+        description: "Número do contrato com a empresa terceirizada."
+      - name: orgao_sigla
+        description: "Sigla do órgão onde o terceirizado trabalha."
+      - name: orgao_nome
+        description: "Nome do órgão onde o terceirizado trabalha."
+      - name: orgao_codigo_siafi
+        description: "Código SIAFI do órgão."
+      - name: orgao_codigo_siape
+        description: "Código SIAPE do órgão."
+      - name: unidade_gestora_codigo
+        description: "Código da unidade gestora (SIAFI)."
+      - name: unidade_gestora_nome
+        description: "Nome da unidade gestora."
+      - name: unidade_gestora_sigla
+        description: "Sigla da unidade gestora."
+      - name: unidade_prestacao_nome
+        description: "Unidade onde o terceirizado efetivamente trabalha."
+      - name: mes_carga_numero
+        description: "Número do mês da carga (1, 5 ou 9)."
+      - name: mes_carga_nome
+        description: "Nome do mês da carga."
+      - name: ano_carga
+        description: "Ano da carga dos dados."
+      - name: mes_referencia_data
+        description: "Data de referência do registro (primeiro dia do mês)."
+        tests:
+          - not_null

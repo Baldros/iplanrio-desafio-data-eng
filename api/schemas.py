@@ -3,7 +3,7 @@ from typing import List, Optional, Union
 from datetime import date
 
 class TerceirizadoBase(BaseModel):
-    # Campos obrigatórios no endpoint de listagem conforme README
+    """Campos retornados no endpoint de listagem /terceirizados (conforme README)."""
     id_terceirizado: int
     orgao_superior_sigla: Optional[str] = None
     cnpj: Optional[str] = None
@@ -12,7 +12,7 @@ class TerceirizadoBase(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
 class TerceirizadoFull(TerceirizadoBase):
-    # Todos os campos da camada ouro para o endpoint de detalhe
+    """Todos os campos da camada Ouro — retornados no endpoint /terceirizados/{id}."""
     terceirizado_nome: Optional[str] = None
     categoria_profissional_nome: Optional[str] = None
     escolaridade_nome: Optional[str] = None
@@ -23,8 +23,16 @@ class TerceirizadoFull(TerceirizadoBase):
     contrato_numero: Optional[str] = None
     orgao_sigla: Optional[str] = None
     orgao_nome: Optional[str] = None
+    orgao_codigo_siafi: Optional[str] = None
+    orgao_codigo_siape: Optional[str] = None
+    unidade_gestora_codigo: Optional[str] = None
     unidade_gestora_nome: Optional[str] = None
-    mes_referencia: Optional[date] = None
+    unidade_gestora_sigla: Optional[str] = None
+    unidade_prestacao_nome: Optional[str] = None
+    mes_carga_numero: Optional[int] = None
+    mes_carga_nome: Optional[str] = None
+    ano_carga: Optional[int] = None
+    mes_referencia_data: Optional[date] = None
 
 class PaginatedResponse(BaseModel):
     total_count: int

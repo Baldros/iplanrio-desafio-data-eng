@@ -73,6 +73,19 @@ class ELTEngine:
         :param select: Seletor (silver, gold, etc). Se None, assume o mesmo que o target.
         """
         selector = select or target
+
+        # Garante que os pacotes dbt estão instalados (dbt-utils, etc.)
+        if not hasattr(self, '_deps_installed'):
+            print("[Engine] Instalando dependências dbt (dbt deps)...")
+            subprocess.run(
+                [self.dbt_executable, "deps"],
+                cwd=self.dbt_project_dir,
+                check=True,
+                capture_output=True,
+                text=True
+            )
+            self._deps_installed = True
+
         print(f"[Engine] dbt run --target {target} --select {selector}...")
         
         command = [self.dbt_executable, "run", "--target", target, "--select", selector]

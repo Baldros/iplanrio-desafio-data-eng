@@ -2,6 +2,106 @@
 
 Repositório de instrução para o desafio técnico para vaga de Pessoa Engenheira de Dados.
 
+---
+
+## 🚀 Como Executar
+
+### Pré-requisitos
+
+- [Docker](https://docs.docker.com/get-docker/) e [Docker Compose](https://docs.docker.com/compose/install/) instalados
+- [Git](https://git-scm.com/) para clonar o repositório
+
+### 1. Clone o repositório e configure o ambiente
+
+```bash
+git clone https://github.com/<seu-usuario>/iplanrio-desafio-data-eng.git
+cd iplanrio-desafio-data-eng
+
+# Copie o arquivo de variáveis de ambiente e ajuste se necessário
+cp .env.example .env
+```
+
+### 2. Suba a infraestrutura com Docker Compose
+
+```bash
+docker-compose up --build -d
+```
+
+Isso inicializa os seguintes serviços:
+
+| Serviço | URL | Descrição |
+|---|---|---|
+| **MinIO** (S3 Local) | http://localhost:9001 | Console web do Object Storage |
+| **Prefect Server** | http://localhost:4200 | UI de orquestração do pipeline |
+| **API REST** | http://localhost:8000 | API de Terceirizados |
+| **Swagger/Docs** | http://localhost:8000/docs | Documentação interativa da API |
+
+### 3. Execute o pipeline
+
+O pipeline é registrado automaticamente via Prefect Deploy e roda no schedule configurado (quadrimestral). Para executar manualmente:
+
+```bash
+# Via Prefect UI
+# Acesse http://localhost:4200 → Deployments → medallion-elt-deployment → Run
+
+# Ou direto no container
+docker exec -it prefect-worker python pipeline/flow.py
+```
+
+### 4. Teste a API
+
+```bash
+# Listagem paginada
+curl http://localhost:8000/terceirizados/?page=1&page_size=10
+
+# Detalhes de um terceirizado
+curl http://localhost:8000/terceirizados/1
+```
+
+### 5. Execute os testes (opcional)
+
+```bash
+# Testes da API
+pip install pytest httpx
+python -m pytest tests/ -v
+```
+
+### Estrutura do Projeto
+
+```
+iplanrio-desafio-data-eng/
+├── api/                    # API REST (FastAPI)
+│   ├── main.py             # Entrypoint da aplicação
+│   ├── routes.py           # Endpoints /terceirizados
+│   ├── schemas.py          # Modelos Pydantic
+│   ├── database.py         # Conexão DuckDB via S3
+│   └── config.py           # Configurações via variáveis de ambiente
+├── dbt/                    # Transformações dbt (Silver + Gold)
+│   ├── models/
+│   │   ├── silver/         # Limpeza e padronização IPLANRIO
+│   │   ├── gold/           # Modelo final para API
+│   │   ├── schema.yml      # Metadados e testes de qualidade
+│   │   └── sources.yml     # Fontes de dados (Bronze, Silver)
+│   ├── profiles.yml        # Configuração DuckDB
+│   └── dbt_project.yml     # Configuração do projeto dbt
+├── pipeline/               # Pipeline ELT (Prefect v3)
+│   ├── flow.py             # Orquestração Medallion (Bronze→Silver→Gold)
+│   ├── scraper.py          # Scraping e download dos dados
+│   ├── engine.py           # Motor ELT (DuckDB + dbt)
+│   ├── OStorage.py         # Cliente S3/MinIO
+│   └── deploy.py           # Registro do deployment Prefect
+├── tests/                  # Testes automatizados
+│   └── test_api.py         # Testes da API REST
+├── docs/                   # Documentação técnica
+├── docker-compose.yml      # Orquestração de containers
+├── Dockerfile              # Imagem base do projeto
+├── .env.example            # Template de variáveis de ambiente
+└── requirements.txt        # Dependências Python
+```
+
+---
+
+
 ## Descrição do desafio
 
 Neste desafio você deverá capturar, estruturar, armazenar e transformar dados de Terceirizados de Órgãos Federais, disponíveis no site [Dados Abertos - Terceirizados de Órgãos Federais](https://www.gov.br/cgu/pt-br/acesso-a-informacao/dados-abertos/arquivos/terceirizados).

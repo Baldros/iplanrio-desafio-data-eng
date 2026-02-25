@@ -8,6 +8,6 @@ model-paths: ["models"]
 models:
   terceirizados:
     silver:
-      materialized: table
+      +schema: main
     gold:
-      materialized: table
+      +schema: main

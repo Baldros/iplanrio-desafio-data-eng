@@ -62,12 +62,12 @@ def get_terceirizado(id_terceirizado: str):
 
     try:
         conn = db_manager.get_connection()
-        query = f"""
+        query = """
             SELECT *
             FROM gold_db.terceirizados_gold
-            WHERE id_terceirizado = '{id_terceirizado}'
+            WHERE id_terceirizado = ?
         """
-        result = conn.execute(query).fetchone()
+        result = conn.execute(query, [id_terceirizado]).fetchone()
         
         if not result:
             raise HTTPException(status_code=404, detail="Terceirizado não encontrado")

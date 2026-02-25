@@ -1,4 +1,10 @@
 -- models/silver/terceirizados_silver.sql
+
+{{ config(
+    materialized='incremental',
+    unique_key=['id_terceirizado', 'mes_referencia_data']
+) }}
+
 SELECT
     -- Chave primária primeiro
     TRY_CAST(id_terc AS INTEGER)                                                AS id_terceirizado,
@@ -40,3 +46,11 @@ SELECT
 
 FROM {{ source('bronze', 'terceirizados') }}
 WHERE nr_cpf IS NOT NULL
+
+{% if is_incremental() %}
+    AND MAKE_DATE(
+        TRY_CAST(ano_carga AS INTEGER),
+        TRY_CAST(num_mes_carga AS INTEGER),
+        1
+    ) > (SELECT COALESCE(MAX(mes_referencia_data), '1900-01-01') FROM {{ this }})
+{% endif %}

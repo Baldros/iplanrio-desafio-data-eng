@@ -2,13 +2,17 @@ version: 2
 
 sources:
   - name: bronze
+    description: "Camada Bronze — dados brutos consolidados dos Parquets ingeridos do site do governo."
     database: bronze
     schema: main
     tables:
       - name: terceirizados
+        description: "Tabela bruta contendo todos os registros de terceirizados de órgãos federais."
 
   - name: silver
+    description: "Camada Silver — dados limpos e padronizados conforme o guia IPLANRIO."
     database: silver
     schema: main
     tables:
       - name: terceirizados_silver
+        description: "Tabela padronizada de terceirizados federais com colunas renomeadas e tipadas."
