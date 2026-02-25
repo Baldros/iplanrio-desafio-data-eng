@@ -1,9 +1,10 @@
 from pydantic import BaseModel, ConfigDict
-from typing import List, Optional
+from typing import List, Optional, Union
+from datetime import date
 
 class TerceirizadoBase(BaseModel):
     # Campos obrigatórios no endpoint de listagem conforme README
-    id_terceirizado: str
+    id_terceirizado: int
     orgao_superior_sigla: Optional[str] = None
     cnpj: Optional[str] = None
     cpf: Optional[str] = None
@@ -15,7 +16,7 @@ class TerceirizadoFull(TerceirizadoBase):
     terceirizado_nome: Optional[str] = None
     categoria_profissional_nome: Optional[str] = None
     escolaridade_nome: Optional[str] = None
-    jornada_quantidade: Optional[str] = None
+    jornada_quantidade: Optional[int] = None
     salario_mensal_valor: Optional[float] = None
     custo_mensal_valor: Optional[float] = None
     empresa_razao_social_nome: Optional[str] = None
@@ -23,7 +24,7 @@ class TerceirizadoFull(TerceirizadoBase):
     orgao_sigla: Optional[str] = None
     orgao_nome: Optional[str] = None
     unidade_gestora_nome: Optional[str] = None
-    mes_referencia: Optional[str] = None
+    mes_referencia: Optional[date] = None
 
 class PaginatedResponse(BaseModel):
     total_count: int

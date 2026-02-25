@@ -1,8 +1,7 @@
 from fastapi import APIRouter, HTTPException, Query
-from typing import List
-from api.database import db_manager
-from api.schemas import TerceirizadoBase, TerceirizadoFull, PaginatedResponse
-from api.config import settings
+from database import db_manager
+from schemas import TerceirizadoFull, PaginatedResponse
+from config import settings
 
 # Usaremos um cache em memória simples para cumprir o requisito do desafio
 from cachetools import TTLCache
@@ -22,10 +21,9 @@ def list_terceirizados(
     if cache_key in cache:
         return cache[cache_key]
 
-    conn = db_manager.get_connection()
-    offset = (page - 1) * page_size
-    
     try:
+        conn = db_manager.get_connection()
+        offset = (page - 1) * page_size
         # Busca total de registros
         total = conn.execute("SELECT count(*) FROM gold_db.terceirizados_gold").fetchone()[0]
         
@@ -62,9 +60,8 @@ def get_terceirizado(id_terceirizado: str):
     if cache_key in cache:
         return cache[cache_key]
 
-    conn = db_manager.get_connection()
-    
     try:
+        conn = db_manager.get_connection()
         query = f"""
             SELECT *
             FROM gold_db.terceirizados_gold

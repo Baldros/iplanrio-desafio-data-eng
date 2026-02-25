@@ -1,6 +1,5 @@
 import duckdb
-import os
-from api.config import settings
+from config import settings
 
 class DatabaseManager:
     """
@@ -13,35 +12,49 @@ class DatabaseManager:
 
     def get_connection(self):
         if self._conn is None:
-            # Cria uma conexão em memória
+            # Cria conexão em memória
             self._conn = duckdb.connect(':memory:')
             
-            # Instala e carrega a extensão httpfs para acesso remoto
+            # Garante que as extensões estão prontas
             self._conn.execute("INSTALL httpfs; LOAD httpfs;")
             
-            # Configura credenciais
-            self._conn.execute(f"SET s3_access_key_id='{settings.AWS_ACCESS_KEY_ID}';")
-            self._conn.execute(f"SET s3_secret_access_key='{settings.AWS_SECRET_ACCESS_KEY}';")
-            self._conn.execute(f"SET s3_region='{settings.AWS_REGION}';")
+            # CONFIGURAÇÃO PROFISSIONAL: DuckDB Secrets (v1.0+)
+            # Isso centraliza a configuração do S3 de forma segura e robusta.
             
-            # Configuração agnóstica: MinIO (Endpoint presente) vs S3 Real (Endpoint vazio)
+            # Limpa o endpoint (remove protocolo para o DuckDB)
+            endpoint = ""
             if settings.S3_ENDPOINT_URL:
-                # Local/MinIO
                 endpoint = settings.S3_ENDPOINT_URL.replace("http://", "").replace("https://", "")
-                self._conn.execute(f"SET s3_endpoint='{endpoint}';")
-                self._conn.execute("SET s3_use_ssl=false;")
-                self._conn.execute("SET s3_url_style='path';")
-            else:
-                # AWS S3 Real
-                self._conn.execute("SET s3_use_ssl=true;")
-                self._conn.execute("SET s3_url_style='vhost';")
             
-            # Monta o caminho remoto do banco Ouro
+            # Cria o secret dinamicamente
+            # Se endpoint estiver vazio, o DuckDB assume AWS S3 oficial.
+            secret_cmd = f"""
+                CREATE OR REPLACE SECRET s3_creds (
+                    TYPE S3,
+                    KEY_ID '{settings.AWS_ACCESS_KEY_ID}',
+                    SECRET '{settings.AWS_SECRET_ACCESS_KEY}',
+                    REGION '{settings.AWS_REGION}',
+                    ENDPOINT '{endpoint}',
+                    URL_STYLE '{'path' if endpoint else 'vhost'}',
+                    USE_SSL {str(not bool(endpoint)).lower()}
+                );
+            """
+            self._conn.execute(secret_cmd)
+            
+            # Caminho URI S3
             s3_path = f"s3://{settings.BUCKET_NAME}/{settings.GOLD_PATH}"
             
-            # Anexa o arquivo remoto como um banco de dados
-            # Usamos prefixo 'gold_db' para isolar as tabelas
-            self._conn.execute(f"ATTACH '{s3_path}' AS gold_db (READ_ONLY);")
+            try:
+                # Agora o ATTACH usa automaticamente o secret 's3_creds'
+                self._conn.execute(f"ATTACH '{s3_path}' AS gold_db (READ_ONLY);")
+                print(f"Suceso: Cloud Mount estabelecido em {s3_path}")
+            except Exception as e:
+                # Fallback técnico: Se o ATTACH do arquivo .duckdb via S3 falhar (limitação de alguns providers/versões)
+                # O ideal em uma arquitetura Data Lakehouse seria ler Parquet, 
+                # mas vamos tentar garantir que o erro seja claro.
+                raise RuntimeError(f"Erro ao montar banco Ouro via S3 Secrets: {e}")
+                
+        return self._conn
             
         return self._conn
 

@@ -1,6 +1,6 @@
 from fastapi import FastAPI
-from api.routes import router
-from api.config import settings
+from routes import router
+from config import settings
 
 app = FastAPI(
     title="API de Terceirizados - IPLANRIO",
