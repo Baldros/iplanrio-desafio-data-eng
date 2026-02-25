@@ -63,6 +63,21 @@ services:
     networks:
       - pipeline-net
 
+  api:
+    build: .
+    container_name: terceirizados-api
+    ports:
+      - "8000:8000"
+    env_file:
+      - .env
+    environment:
+      - PYTHONPATH=/app:/app/pipeline
+    command: python api/main.py
+    networks:
+      - pipeline-net
+    depends_on:
+      - minio
+
 volumes:
   minio_data:
   prefect_data:
