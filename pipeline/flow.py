@@ -89,6 +89,10 @@ def ingest_raw_data(config: Dict[str, Any]) -> int:
                 logger.error(f"[Flow] Erro ao processar {ano}-{mes}: {e}")
                 raise e
                 
+    if baixados == 0:
+        logger.info("Nenhum arquivo novo para processar.")
+        return 0
+    
     return baixados
 
 @task(name="Build Bronze Layer", description="Consolidar Parquets na camada Bronze e subir para S3.")
@@ -165,12 +169,11 @@ def medallion_pipeline():
     # 3. Camadas (Bronze -> Silver -> Gold)
     if baixados > 0:
         build_bronze_layer(config)
+        run_dbt_transformation("silver", config)
+        run_dbt_transformation("gold", config)
     else:
-        logger.info("Nenhuma novidade RAW. Pulando atualização da camada Bronze.")
+        logger.info("Nenhuma novidade. Sem necessidade de ELT.")
 
-    run_dbt_transformation("silver", config)
-    run_dbt_transformation("gold", config)
-    
     # 4. Limpeza
     cleanup_local_storage(config)
     
