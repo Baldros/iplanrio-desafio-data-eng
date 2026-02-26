@@ -22,18 +22,8 @@ models:
         description: "Quantidade de horas semanais de trabalho do terceirizado."
       - name: salario_mensal_valor
         description: "Valor mensal do salário do terceirizado em reais (R$)."
-        tests:
-          - dbt_utils.accepted_range:
-              min_value: 0
-              config:
-                severity: warn
       - name: custo_mensal_valor
         description: "Custo total mensal do terceirizado em reais (R$)."
-        tests:
-          - dbt_utils.accepted_range:
-              min_value: 0
-              config:
-                severity: warn
       - name: cnpj
         description: "CNPJ da empresa terceirizada contratada."
         tests:

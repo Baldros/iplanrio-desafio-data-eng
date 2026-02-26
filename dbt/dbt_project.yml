@@ -5,9 +5,6 @@ profile: 'terceirizados'
 
 model-paths: ["models"]
 
-models:
-  terceirizados:
-    silver:
-      +schema: main
-    gold:
-      +schema: main
+clean-targets:
+  - "target"
+  - "dbt_packages"

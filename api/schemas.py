@@ -39,3 +39,19 @@ class PaginatedResponse(BaseModel):
     page: int
     page_size: int
     items: List[TerceirizadoBase]
+
+class EstatisticasResponse(BaseModel):
+    """Estatísticas agregadas sobre os terceirizados."""
+    total_terceirizados: int
+    total_orgaos: int
+    total_empresas: int
+    media_salarial: Optional[float] = None
+    media_custo: Optional[float] = None
+    periodo_inicio: Optional[date] = None
+    periodo_fim: Optional[date] = None
+
+class OrgaoItem(BaseModel):
+    """Órgão com contagem de terceirizados."""
+    sigla: str
+    nome: Optional[str] = None
+    total_terceirizados: int
