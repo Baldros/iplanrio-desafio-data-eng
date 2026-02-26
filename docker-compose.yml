@@ -63,6 +63,18 @@ services:
     networks:
       - pipeline-net
 
+  jaeger:
+    image: jaegertracing/all-in-one:latest
+    container_name: jaeger
+    restart: unless-stopped
+    ports:
+      - "16686:16686"
+      - "4318:4318"
+    environment:
+      - COLLECTOR_OTLP_ENABLED=true
+    networks:
+      - pipeline-net
+
   api:
     build: .
     container_name: terceirizados-api
@@ -72,11 +84,14 @@ services:
       - .env
     environment:
       - PYTHONPATH=/app:/app/pipeline
+      - OTEL_ENABLED=true
+      - OTEL_EXPORTER_OTLP_ENDPOINT=http://jaeger:4318
     command: python api/main.py
     networks:
       - pipeline-net
     depends_on:
       - minio
+      - jaeger
 
 volumes:
   minio_data:

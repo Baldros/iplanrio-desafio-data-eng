@@ -8,6 +8,10 @@ from typing import Optional
 from cachetools import TTLCache
 cache = TTLCache(maxsize=200, ttl=settings.CACHE_EXPIRE_SECONDS)
 
+# OpenTelemetry — tracer para spans de queries DuckDB
+from opentelemetry import trace
+tracer = trace.get_tracer("terceirizados.routes")
+
 router = APIRouter(prefix="/terceirizados", tags=["Terceirizados"])
 
 # =====================================================================
@@ -26,20 +30,21 @@ def get_estatisticas():
 
     try:
         conn = db_manager.get_connection()
-        query = """
-            SELECT
-                COUNT(*) AS total_terceirizados,
-                COUNT(DISTINCT orgao_superior_sigla) AS total_orgaos,
-                COUNT(DISTINCT cnpj) AS total_empresas,
-                ROUND(AVG(salario_mensal_valor), 2) AS media_salarial,
-                ROUND(AVG(custo_mensal_valor), 2) AS media_custo,
-                MIN(mes_referencia_data) AS periodo_inicio,
-                MAX(mes_referencia_data) AS periodo_fim
-            FROM gold_db.terceirizados_gold
-        """
-        result = conn.execute(query).fetchone()
-        column_names = [d[0] for d in conn.description]
-        stats = dict(zip(column_names, result))
+        with tracer.start_as_current_span("duckdb.query", attributes={"db.system": "duckdb", "db.operation": "estatisticas"}):
+            query = """
+                SELECT
+                    COUNT(*) AS total_terceirizados,
+                    COUNT(DISTINCT orgao_superior_sigla) AS total_orgaos,
+                    COUNT(DISTINCT cnpj) AS total_empresas,
+                    ROUND(AVG(salario_mensal_valor), 2) AS media_salarial,
+                    ROUND(AVG(custo_mensal_valor), 2) AS media_custo,
+                    MIN(mes_referencia_data) AS periodo_inicio,
+                    MAX(mes_referencia_data) AS periodo_fim
+                FROM gold_db.terceirizados_gold
+            """
+            result = conn.execute(query).fetchone()
+            column_names = [d[0] for d in conn.description]
+            stats = dict(zip(column_names, result))
 
         cache[cache_key] = stats
         return stats
@@ -60,19 +65,20 @@ def list_orgaos():
 
     try:
         conn = db_manager.get_connection()
-        query = """
-            SELECT
-                orgao_superior_sigla AS sigla,
-                MAX(orgao_nome) AS nome,
-                COUNT(*) AS total_terceirizados
-            FROM gold_db.terceirizados_gold
-            WHERE orgao_superior_sigla IS NOT NULL
-            GROUP BY orgao_superior_sigla
-            ORDER BY total_terceirizados DESC
-        """
-        results = conn.execute(query).fetchall()
-        column_names = [d[0] for d in conn.description]
-        items = [dict(zip(column_names, row)) for row in results]
+        with tracer.start_as_current_span("duckdb.query", attributes={"db.system": "duckdb", "db.operation": "orgaos"}):
+            query = """
+                SELECT
+                    orgao_superior_sigla AS sigla,
+                    MAX(orgao_nome) AS nome,
+                    COUNT(*) AS total_terceirizados
+                FROM gold_db.terceirizados_gold
+                WHERE orgao_superior_sigla IS NOT NULL
+                GROUP BY orgao_superior_sigla
+                ORDER BY total_terceirizados DESC
+            """
+            results = conn.execute(query).fetchall()
+            column_names = [d[0] for d in conn.description]
+            items = [dict(zip(column_names, row)) for row in results]
 
         cache[cache_key] = items
         return items
@@ -122,21 +128,32 @@ def list_terceirizados(
         if where_clauses:
             where_sql = "WHERE " + " AND ".join(where_clauses)
 
-        # Total de registros (com filtro)
-        count_query = f"SELECT count(*) FROM gold_db.terceirizados_gold {where_sql}"
-        total = conn.execute(count_query, params).fetchone()[0]
+        with tracer.start_as_current_span("duckdb.query", attributes={
+            "db.system": "duckdb",
+            "db.operation": "list_terceirizados",
+            "query.page": page,
+            "query.page_size": page_size,
+            "query.has_filters": bool(where_clauses),
+        }):
+            # Total de registros (com filtro)
+            count_query = f"SELECT count(*) FROM gold_db.terceirizados_gold {where_sql}"
+            total = conn.execute(count_query, params).fetchone()[0]
 
-        # Registros paginados (com filtro)
-        query = f"""
-            SELECT id_terceirizado, orgao_superior_sigla, cnpj, cpf
-            FROM gold_db.terceirizados_gold
-            {where_sql}
-            LIMIT ? OFFSET ?
-        """
-        results = conn.execute(query, params + [page_size, offset]).fetchall()
+            # Registros paginados (com filtro)
+            query = f"""
+                SELECT id_terceirizado, orgao_superior_sigla, cnpj, cpf
+                FROM gold_db.terceirizados_gold
+                {where_sql}
+                LIMIT ? OFFSET ?
+            """
+            results = conn.execute(query, params + [page_size, offset]).fetchall()
 
-        column_names = [d[0] for d in conn.description]
-        items = [dict(zip(column_names, row)) for row in results]
+            column_names = [d[0] for d in conn.description]
+            items = [dict(zip(column_names, row)) for row in results]
+
+            # Registra total de resultados no span
+            span = trace.get_current_span()
+            span.set_attribute("db.result_count", total)
 
         response = PaginatedResponse(
             total_count=total,
@@ -163,18 +180,23 @@ def get_terceirizado(id_terceirizado: str):
 
     try:
         conn = db_manager.get_connection()
-        query = """
-            SELECT *
-            FROM gold_db.terceirizados_gold
-            WHERE id_terceirizado = ?
-        """
-        result = conn.execute(query, [id_terceirizado]).fetchone()
+        with tracer.start_as_current_span("duckdb.query", attributes={
+            "db.system": "duckdb",
+            "db.operation": "get_terceirizado",
+            "query.id": id_terceirizado,
+        }):
+            query = """
+                SELECT *
+                FROM gold_db.terceirizados_gold
+                WHERE id_terceirizado = ?
+            """
+            result = conn.execute(query, [id_terceirizado]).fetchone()
 
-        if not result:
-            raise HTTPException(status_code=404, detail="Terceirizado não encontrado")
+            if not result:
+                raise HTTPException(status_code=404, detail="Terceirizado não encontrado")
 
-        column_names = [d[0] for d in conn.description]
-        item = dict(zip(column_names, result))
+            column_names = [d[0] for d in conn.description]
+            item = dict(zip(column_names, result))
 
         cache[cache_key] = item
         return item

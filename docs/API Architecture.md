@@ -97,5 +97,11 @@ A API gera documentação automática via FastAPI:
 - **Swagger UI**: `http://localhost:8000/docs`
 - **ReDoc**: `http://localhost:8000/redoc`
 
+## 8. Observabilidade (OpenTelemetry)
+
+A API é instrumentada com **OpenTelemetry** para tracing distribuído. Cada request gera traces visíveis no Jaeger UI (`http://localhost:16686`), incluindo spans customizados para as queries DuckDB.
+
+> Para detalhes completos sobre a configuração, consulte [Observabilidade](Observabilidade.md).
+
 ---
 > Para detalhes sobre o pipeline de processamento, consulte [Arquitetura ELT Workflow](Arquitetura%20ELT%20Workflow.md).

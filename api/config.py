@@ -16,6 +16,11 @@ class Settings(BaseSettings):
     API_PORT: int = 8000
     CACHE_EXPIRE_SECONDS: int = 3600 # 1 hora
     
+    # OpenTelemetry
+    OTEL_ENABLED: bool = False
+    OTEL_SERVICE_NAME: str = "terceirizados-api"
+    OTEL_EXPORTER_OTLP_ENDPOINT: str = "http://jaeger:4318"
+    
     # Configuração para ler do .env se existir
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")
 
