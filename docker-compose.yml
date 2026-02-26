@@ -28,14 +28,15 @@ services:
     networks:
       - pipeline-net
     healthcheck:
-      test: [ "CMD-SHELL", "prefect server healthcheck || exit 1" ]
+      test: [ "CMD-SHELL", "python -c \"import urllib.request; urllib.request.urlopen('http://localhost:4200/api/health')\" || exit 1" ]
       interval: 10s
       timeout: 5s
       retries: 5
 
-  prefect-deploy:
+  prefect-runner:
     build: .
-    container_name: prefect-deploy
+    container_name: prefect-runner
+    restart: unless-stopped
     depends_on:
       prefect-server:
         condition: service_healthy
@@ -44,22 +45,6 @@ services:
     environment:
       - PREFECT_API_URL=http://prefect-server:4200/api
     command: python pipeline/deploy.py
-    networks:
-      - pipeline-net
-
-  prefect-worker:
-    build: .
-    container_name: prefect-worker
-    depends_on:
-      prefect-server:
-        condition: service_healthy
-      prefect-deploy:
-        condition: service_completed_successfully
-    env_file:
-      - .env
-    environment:
-      - PREFECT_API_URL=http://prefect-server:4200/api
-    command: prefect worker start --pool "default-agent-pool"
     networks:
       - pipeline-net
 
