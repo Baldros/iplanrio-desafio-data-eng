@@ -1,8 +1,49 @@
-# Desafio de Data Engineer - IPLANRIO
+# Desafio de Data Engineer — IPLANRIO
 
-Repositório de instrução para o desafio técnico para vaga de Pessoa Engenheira de Dados.
+Solução completa para o desafio técnico de Engenharia de Dados, envolvendo a construção de um pipeline ELT de ponta a ponta: desde a coleta de dados de Terceirizados de Órgãos Federais até a exposição via API REST, seguindo a **Arquitetura Medallion** (Bronze → Silver → Gold).
 
----
+## 🏗️ Stack Tecnológica
+
+| Camada | Tecnologia | Papel |
+|---|---|---|
+| **Ingestão** | Python + Polars | Scraping do portal de Dados Abertos da CGU |
+| **Armazenamento** | MinIO / AWS S3 | Object Storage (Parquet + DuckDB) |
+| **Processamento** | DuckDB | Motor analítico para consolidação (Bronze) |
+| **Transformação** | dbt + DuckDB | Padronização IPLANRIO (Silver) e modelo final (Gold) |
+| **Orquestração** | Prefect v3 | Agendamento e monitoramento do pipeline |
+| **API** | FastAPI | Endpoints REST com paginação, filtros e cache |
+| **Infraestrutura** | Docker Compose | Ambiente reproduzível com todos os serviços |
+
+## 📐 Arquitetura
+
+```
+Portal CGU (gov.br)
+       ↓  Scraping
+   Parquet (raw/)  ──→  MinIO/S3
+       ↓  DuckDB
+   bronze.duckdb   ──→  MinIO/S3
+       ↓  dbt (incremental)
+   silver.duckdb   ──→  MinIO/S3
+       ↓  dbt (incremental)
+    gold.duckdb    ──→  MinIO/S3
+       ↓  ATTACH via S3
+     API REST (FastAPI)
+```
+
+> Para detalhes sobre cada componente, consulte a documentação técnica:
+> - 📊 [Arquitetura do Pipeline ELT](docs/Arquitetura%20ELT%20Workflow.md) — Fluxo de processamento, camadas e decisões técnicas
+> - 🌐 [Arquitetura da API REST](docs/API%20Architecture.md) — Endpoints, filtros, cache e conexão com a camada Gold
+> - 🏛️ [Arquitetura Medallion](docs/Arquitetura%20Medallion.md) — Conceitos e benefícios da arquitetura de medalhão
+> - 📖 [Dicionário de Dados](docs/DataDictionary.md) — Descrição de cada campo da base original
+
+## ✨ Diferenciais Implementados
+
+- **Modelos dbt incrementais** — Silver e Gold processam apenas dados novos, sem reprocessar histórico
+- **API com filtros avançados** — Filtros por órgão, CNPJ e período de referência
+- **Endpoints analíticos** — `/estatisticas` e `/orgaos` para exploração dos dados
+- **Testes automatizados** — Suíte de testes da API com pytest
+- **Documentação completa** — README, arquitetura técnica e dicionário de dados
+- **Queries parametrizadas** — Proteção contra SQL Injection em todos os endpoints
 
 ## 🚀 Como Executar
 

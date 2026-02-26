@@ -2,32 +2,24 @@
 
 ## Visão Geral
 
-O sistema é composto por um pipeline de dados modular escrito em Python, que percorre todas as etapas desde a aquisição dos dados brutos até a exposição via API REST. O Objective Storage (MinIO em dev, S3 em prod) é o hub central de armazenamento — tanto dos dados brutos quanto dos arquivos `.duckdb` processados de cada camada.
+Pipeline ELT modular escrito em Python, orquestrado pelo **Prefect v3**, que percorre todas as etapas desde a aquisição dos dados brutos até a disponibilização via API REST. O Object Storage (MinIO em dev, AWS S3 em prod) é o hub central de armazenamento.
 
 ---
 
 ## Fluxo Completo
 
 ```
-Scraping (gov.br)
-      ↓
-  Parquet (raw)  →  MinIO/S3 (raw/)
-                          ↓
-                ELTEngine (DuckDB) processa
-                          ↓
-               bronze.duckdb  →  MinIO/S3 (bronze/)
-                          ↓
-                ELTEngine (dbt silver)
-                          ↓
-               silver.duckdb  →  MinIO/S3 (silver/)
-                          ↓
-                ELTEngine (dbt gold)
-                          ↓
-                gold.duckdb   →  MinIO/S3 (gold/)
-                          ↓
-                    API baixa gold.duckdb
-                          ↓
-                       API REST
+Portal CGU (gov.br)
+       ↓  scraper.py (Polars)
+   Parquet (raw/)  ──→  MinIO/S3     ← Idempotente: só baixa meses novos
+       ↓  engine.py (DuckDB + httpfs)
+   bronze.duckdb   ──→  MinIO/S3     ← Consolida todos os Parquets
+       ↓  dbt run --target silver
+   silver.duckdb   ──→  MinIO/S3     ← Incremental: só processa novos meses
+       ↓  dbt run --target gold
+    gold.duckdb    ──→  MinIO/S3     ← Incremental: modelo final com índices
+       ↓  DuckDB ATTACH via S3
+     API REST (FastAPI)              ← Cache TTL + paginação + filtros
 ```
 
 ---
@@ -38,7 +30,8 @@ Scraping (gov.br)
 terceirizados/
 ├── raw/
 │   ├── terceirizados_2024_janeiro.parquet
-│   ├── terceirizados_2024_fevereiro.parquet
+│   ├── terceirizados_2024_maio.parquet
+│   ├── terceirizados_2024_setembro.parquet
 │   └── ...
 ├── bronze/
 │   └── terceirizados-bronze.duckdb
@@ -54,61 +47,93 @@ terceirizados/
 
 ### 1. Aquisição dos Dados (Scraping)
 
-O scraping (em `scraper.py`) acessa o portal de Dados Abertos da CGU e coleta os arquivos mensais de terceirizados. O dado coletado é convertido em Polars DataFrame e serializado no formato Parquet.
+O `scraper.py` acessa o portal de Dados Abertos da CGU e coleta os arquivos quadrimestrais (Janeiro, Maio, Setembro) de terceirizados. O dado coletado é convertido em **Polars DataFrame** e serializado no formato **Parquet**.
 
-**Detecção de novidades (idempotência):** antes de baixar qualquer arquivo, o pipeline compara os meses disponíveis no site com os arquivos já presentes no MinIO (`raw/`). Apenas os meses novos são processados. Se não houver novidade (e a base bronze já existir), o download é ignorado.
+**Idempotência:** antes de baixar, o pipeline compara os meses disponíveis no site com os arquivos já presentes no MinIO (`raw/`). Apenas os meses novos são processados — se não houver novidade, o pipeline encerra sem reprocessar.
 
 ---
 
-### 2. Objective Storage — MinIO / S3
+### 2. Object Storage — MinIO / S3
 
-O `OBJStorageClient` (em `OStorage.py`) abstrai a comunicação com o S3. Em desenvolvimento, usamos MinIO via Docker. Em produção, os mesmos métodos funcionam com o Amazon S3.
-O armazenamento é o ponto de sincronia entre os processos: os arquivos `.duckdb` gerados localmente em cada etapa são enviados para o bucket para persistência e compartilhamento.
+O `OStorage.py` abstrai a comunicação com o S3 via **boto3**. Em desenvolvimento, utiliza MinIO via Docker. Em produção, os mesmos métodos funcionam com Amazon S3.
+
+O armazenamento é o ponto de sincronia: os arquivos `.duckdb` gerados localmente são enviados ao bucket para persistência e acesso pela API.
 
 ---
 
 ### 3. Camada Bronze — DuckDB
 
-O `ELTEngine` (`engine.py`) utiliza o DuckDB para ler os Parquets diretamente do MinIO via extensão `httpfs` e consolidá-los localmente em `terceirizados-bronze.duckdb`. As credenciais de acesso são injetadas pelo orquestrador (`flow.py`), mantendo o motor de processamento desacoplado das configurações de ambiente.
+O `ELTEngine` (`engine.py`) utiliza o DuckDB para ler os Parquets diretamente do MinIO via extensão `httpfs` e consolidá-los em `terceirizados-bronze.duckdb`. Utiliza `union_by_name=true` para lidar com eventuais variações de schema entre diferentes períodos.
+
+As credenciais são injetadas pelo orquestrador (`flow.py`), mantendo o motor de processamento desacoplado das configurações de ambiente.
 
 ---
 
 ### 4. Camadas Silver e Gold — dbt + DuckDB
 
-O `ELTEngine` orquestra a execução do dbt via subprocess. Cada camada corresponde a um comando dbt específico:
+O `ELTEngine` orquestra a execução do dbt via subprocess. Ambas as camadas utilizam **materialização incremental**:
 
-- **Silver:** Limpeza, padronização de colunas e validações de qualidade dbt (tests).
-- **Gold:** Modelo final consolidado, com índices para otimização de consultas da API.
+#### Silver (`terceirizados_silver.sql`)
+- Limpeza e padronização de colunas conforme o [guia de estilo IPLANRIO](https://docs.dados.rio/data-lake/guia-de-estilo/convencoes-colunas)
+- Cast de tipos (INTEGER, DOUBLE, DATE)
+- Tratamento de formatos numéricos (`REPLACE(vl_mensal_salario, ',', '.')`)
+- **Chave de incrementalidade**: `id_terceirizado` + `mes_referencia_data`
+- **Filtro incremental**: processa apenas registros com `mes_referencia_data` maior que o máximo existente
 
-O motor utiliza o binário do dbt presente no ambiente virtual (`IWVenv`) e direciona o comando para o projeto dbt local.
+#### Gold (`terceirizados_gold.sql`)
+- Modelo final com todas as 23 colunas da Silver
+- Índices criados via `post_hook`: `id_terceirizado` e `cpf`
+- Mesmo critério de incrementalidade da Silver
+
+#### Testes de Qualidade (`schema.yml`)
+- `not_null` em colunas-chave (id, cpf, cnpj, mes_referencia)
+- `accepted_values` para meses de carga (1, 5, 9)
+- Descrição completa de todas as colunas em ambos os modelos
 
 ---
 
-### 5. Orquestração — Workflow Python
+### 5. Orquestração — Prefect v3
 
-O `flow.py` orquestra todas as etapas em um fluxo sequencial. Ele é o responsável por centralizar as variáveis de ambiente, gerenciar os diretórios temporários e garantir que um passo só ocorra se o anterior for bem-sucedido.
+O `flow.py` orquestra todas as etapas como **tasks Prefect** em um fluxo sequencial:
+
+1. **Get Configuration** — Carrega variáveis de ambiente
+2. **Ingest Raw Data** — Scraping + upload para S3 (idempotente)
+3. **Build Bronze Layer** — Consolida Parquets em DuckDB
+4. **dbt Silver** — Transformação incremental
+5. **dbt Gold** — Modelo final incremental
+6. **Upload layers** — Envia .duckdb gerados para S3
+7. **Cleanup** — Remove arquivos temporários locais
+
+O `deploy.py` registra o pipeline como um **deployment Prefect** com schedule quadrimestral (cron).
 
 **Estrutura do código (`pipeline/`):**
 
-- `scraper.py`: Coleta e converte dados brutos em Parquet.
-- `OStorage.py`: Interface para leitura/escrita no MinIO/S3.
-- `engine.py`: Motor ELT que coordena DuckDB (Bronze) e dbt (Silver/Gold).
-- `flow.py`: Orquestrador principal que integra todos os componentes.
+| Arquivo | Responsabilidade |
+|---|---|
+| `scraper.py` | Coleta e converte dados brutos em Parquet |
+| `OStorage.py` | Interface para leitura/escrita no MinIO/S3 |
+| `engine.py` | Motor ELT: DuckDB (Bronze) + dbt (Silver/Gold) |
+| `flow.py` | Orquestrador principal — integra todos os componentes |
+| `deploy.py` | Registro do deployment Prefect com schedule |
 
 ---
 
 ### 6. API REST — Consumo da Camada Gold
 
-A API consome o arquivo `terceirizados-gold.duckdb`. Ela baixa a versão mais recente do Objective Storage caso não exista localmente, garantindo que o serviço sempre sirva dados atualizados.
+A API conecta-se diretamente ao `gold.duckdb` no S3 via `ATTACH` (suportado pelo DuckDB + httpfs). Isso garante que sempre consuma a versão mais recente sem necessidade de download local.
+
+> Para detalhes sobre endpoints, filtros e cache, consulte [Arquitetura da API REST](API%20Architecture.md).
 
 ---
 
-## Decisões Arquiteturais Relevantes
+## Decisões Arquiteturais
 
 | Decisão | Escolha | Justificativa |
 |---|---|---|
-| Tecnologia de Processamento | DuckDB + dbt | Alta performance local para transformações relacionais e gestão de linhagem. |
-| Banco por camada | `.duckdb` separado | Isolamento físico das camadas medonhas e facilidade de backup/upload individual. |
-| Injeção de Dependência | Credentials via `flow.py` | Impede que módulos de lógica (`engine.py`) fiquem "poluídos" com variáveis de ambiente do SO. |
-| Modularização ELT | `ELTEngine` consolidado | Facilita a manutenção ao centralizar o uso de subprocessos e conexões de banco. |
-| Camada RAW | Parquet no S3 | Formato colunar eficiente para leitura direta via DuckDB (predicate pushdown). |
+| Motor de processamento | DuckDB + dbt | Alta performance local para transformações analíticas e gestão de linhagem |
+| Banco por camada | `.duckdb` separado | Isolamento físico das camadas e facilidade de backup/upload individual |
+| Materialização dbt | Incremental | Evita reprocessar histórico a cada execução — essencial para o requisito de incrementalidade |
+| Injeção de credenciais | Via `flow.py` | Mantém módulos de lógica (`engine.py`) desacoplados das variáveis de ambiente |
+| Formato RAW | Parquet no S3 | Formato colunar eficiente para leitura direta via DuckDB (predicate pushdown) |
+| Scraping incremental | Comparação com S3 | Idempotência: só baixa períodos não existentes no bucket |
+| Conexão API → Gold | `ATTACH` via S3 | Conforme permitido pelo desafio + cache TTL para performance |
