@@ -35,6 +35,7 @@ api/
 ├── config.py       # Configurações de ambiente (Pydantic BaseSettings)
 ├── database.py     # Conexão DuckDB via S3 (Singleton + httpfs)
 ├── schemas.py      # Modelos Pydantic (request/response)
+├── telemetry.py    # Configuração OpenTelemetry (tracing distribuído)
 └── routes.py       # Todos os endpoints (listagem, detalhe, filtros, análises)
 ```
 

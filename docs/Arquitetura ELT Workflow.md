@@ -104,7 +104,7 @@ O `flow.py` orquestra todas as etapas como **tasks Prefect** em um fluxo sequenc
 6. **Upload layers** — Envia .duckdb gerados para S3
 7. **Cleanup** — Remove arquivos temporários locais
 
-O `deploy.py` registra o pipeline como um **deployment Prefect** com schedule quadrimestral (cron).
+O `deploy.py` utiliza `.serve()` para registrar o pipeline como um **deployment Prefect** com schedule quadrimestral (cron) e manter um processo que escuta e executa os runs agendados.
 
 **Estrutura do código (`pipeline/`):**
 
@@ -114,7 +114,7 @@ O `deploy.py` registra o pipeline como um **deployment Prefect** com schedule qu
 | `OStorage.py` | Interface para leitura/escrita no MinIO/S3 |
 | `engine.py` | Motor ELT: DuckDB (Bronze) + dbt (Silver/Gold) |
 | `flow.py` | Orquestrador principal — integra todos os componentes |
-| `deploy.py` | Registro do deployment Prefect com schedule |
+| `deploy.py` | Registro e execução do deployment Prefect via `.serve()` |
 
 ---
 

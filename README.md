@@ -12,6 +12,7 @@ Solução completa para o desafio técnico de Engenharia de Dados, envolvendo a 
 | **Transformação** | dbt + DuckDB | Padronização IPLANRIO (Silver) e modelo final (Gold) |
 | **Orquestração** | Prefect v3 | Agendamento e monitoramento do pipeline |
 | **API** | FastAPI | Endpoints REST com paginação, filtros e cache |
+| **Observabilidade** | OpenTelemetry + Jaeger | Tracing distribuído da API com visualização de traces |
 | **Infraestrutura** | Docker Compose | Ambiente reproduzível com todos os serviços |
 
 ## 📐 Arquitetura
@@ -34,6 +35,7 @@ Portal CGU (gov.br)
 > - 📊 [Arquitetura do Pipeline ELT](docs/Arquitetura%20ELT%20Workflow.md) — Fluxo de processamento, camadas e decisões técnicas
 > - 🌐 [Arquitetura da API REST](docs/API%20Architecture.md) — Endpoints, filtros, cache e conexão com a camada Gold
 > - 🏛️ [Arquitetura Medallion](docs/Arquitetura%20Medallion.md) — Conceitos e benefícios da arquitetura de medalhão
+> - 📊 [Observabilidade](docs/Observabilidade.md) — Tracing distribuído com OpenTelemetry e Jaeger
 > - 📖 [Dicionário de Dados](docs/DataDictionary.md) — Descrição de cada campo da base original
 
 ## ✨ Diferenciais Implementados
@@ -41,6 +43,7 @@ Portal CGU (gov.br)
 - **Modelos dbt incrementais** — Silver e Gold processam apenas dados novos, sem reprocessar histórico
 - **API com filtros avançados** — Filtros por órgão, CNPJ e período de referência
 - **Endpoints analíticos** — `/estatisticas` e `/orgaos` para exploração dos dados
+- **Observabilidade com OpenTelemetry** — Tracing distribuído da API com visualização no Jaeger
 - **Testes automatizados** — Suíte de testes da API com pytest
 - **Documentação completa** — README, arquitetura técnica e dicionário de dados
 - **Queries parametrizadas** — Proteção contra SQL Injection em todos os endpoints
@@ -76,17 +79,18 @@ Isso inicializa os seguintes serviços:
 | **Prefect Server** | http://localhost:4200 | UI de orquestração do pipeline |
 | **API REST** | http://localhost:8000 | API de Terceirizados |
 | **Swagger/Docs** | http://localhost:8000/docs | Documentação interativa da API |
+| **Jaeger** | http://localhost:16686 | Visualização de traces (OpenTelemetry) |
 
 ### 3. Execute o pipeline
 
-O pipeline é registrado automaticamente via Prefect Deploy e roda no schedule configurado (quadrimestral). Para executar manualmente:
+O pipeline é registrado automaticamente via Prefect Serve e roda no schedule configurado (quadrimestral). Para executar manualmente:
 
 ```bash
 # Via Prefect UI
 # Acesse http://localhost:4200 → Deployments → medallion-elt-deployment → Run
 
 # Ou direto no container
-docker exec -it prefect-worker python pipeline/flow.py
+docker exec -it prefect-runner python pipeline/flow.py
 ```
 
 ### 4. Teste a API
@@ -116,7 +120,8 @@ iplanrio-desafio-data-eng/
 │   ├── routes.py           # Endpoints /terceirizados
 │   ├── schemas.py          # Modelos Pydantic
 │   ├── database.py         # Conexão DuckDB via S3
-│   └── config.py           # Configurações via variáveis de ambiente
+│   ├── config.py           # Configurações via variáveis de ambiente
+│   └── telemetry.py        # Configuração OpenTelemetry (tracing)
 ├── dbt/                    # Transformações dbt (Silver + Gold)
 │   ├── models/
 │   │   ├── silver/         # Limpeza e padronização IPLANRIO
@@ -130,7 +135,7 @@ iplanrio-desafio-data-eng/
 │   ├── scraper.py          # Scraping e download dos dados
 │   ├── engine.py           # Motor ELT (DuckDB + dbt)
 │   ├── OStorage.py         # Cliente S3/MinIO
-│   └── deploy.py           # Registro do deployment Prefect
+│   └── deploy.py           # Registro e execução do deployment Prefect
 ├── tests/                  # Testes automatizados
 │   └── test_api.py         # Testes da API REST
 ├── docs/                   # Documentação técnica
