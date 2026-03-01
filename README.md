@@ -7,7 +7,7 @@ Solução completa para o desafio técnico de Engenharia de Dados, envolvendo a 
 | Camada | Tecnologia | Papel |
 |---|---|---|
 | **Ingestão** | Python + Polars | Scraping do portal de Dados Abertos da CGU |
-| **Armazenamento** | MinIO / AWS S3 | Object Storage (Parquet + DuckDB) |
+| **Armazenamento** | MinIO | Object Storage (Parquet + DuckDB) |
 | **Processamento** | DuckDB | Motor analítico para consolidação (Bronze) |
 | **Transformação** | dbt + DuckDB | Padronização IPLANRIO (Silver) e modelo final (Gold) |
 | **Orquestração** | Prefect v3 | Agendamento e monitoramento do pipeline |
